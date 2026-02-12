@@ -1,9 +1,13 @@
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { randomBytes, scryptSync } from "crypto";
 import { query } from "./db";
 
-const SESSION_COOKIE = "mc_session";
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+
+export type SessionInfo = {
+  token: string;
+  expiresAt: Date;
+};
 
 function hashPassword(password: string, salt = randomBytes(16).toString("hex")) {
   const hashed = scryptSync(password, salt, 64).toString("hex");
@@ -16,27 +20,18 @@ function verifyPassword(password: string, storedHash: string) {
   return hashed === hash;
 }
 
-async function createSession(userId: string) {
+async function createSession(userId: string): Promise<SessionInfo> {
   const token = randomBytes(48).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
   await query(
     "INSERT INTO sessions (token, user_id, expires_at) VALUES ($1, $2, $3)",
     [token, userId, expiresAt.toISOString()],
   );
-  cookies().set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    expires: expiresAt,
-  });
+  return { token, expiresAt };
 }
 
-async function destroySession() {
-  const token = cookies().get(SESSION_COOKIE)?.value;
-  if (token) {
-    await query("DELETE FROM sessions WHERE token = $1", [token]);
-    cookies().delete(SESSION_COOKIE);
-  }
+export async function deleteSession(token: string) {
+  await query("DELETE FROM sessions WHERE token = $1", [token]);
 }
 
 async function auditLogin(userId: string | null, success: boolean) {
@@ -50,8 +45,8 @@ async function auditLogin(userId: string | null, success: boolean) {
 }
 
 export async function login(email: string, password: string) {
-  const users = await query<{ id: string; password_hash: string }>(
-    "SELECT id, password_hash FROM users WHERE email = $1",
+  const users = await query<{ id: string; password_hash: string; role: string }>(
+    "SELECT id, password_hash, role FROM users WHERE email = $1",
     [email],
   );
   const user = users.at(0);
@@ -63,11 +58,11 @@ export async function login(email: string, password: string) {
     throw new Error("invalid_credentials");
   }
 
-  await createSession(user.id);
-}
+  if (user.role !== "admin") {
+    throw new Error("not_authorized");
+  }
 
-export async function logout() {
-  await destroySession();
+  return createSession(user.id);
 }
 
 export async function register(email: string, password: string) {
@@ -76,5 +71,5 @@ export async function register(email: string, password: string) {
     "INSERT INTO users (email, password_hash) VALUES ($1,$2) RETURNING id",
     [email, hashed],
   );
-  await createSession(users[0].id);
+  return createSession(users[0].id);
 }
