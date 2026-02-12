@@ -5,7 +5,7 @@ import { deleteSession } from "@/lib/auth";
 const SESSION_COOKIE = "mc_session";
 
 export async function POST() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
   if (token) {
