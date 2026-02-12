@@ -1,8 +1,5 @@
-import { ensureServerOnly } from "./server-only";
-
-ensureServerOnly();
-
-import { Pool } from "pg";
+import "./server-only";
+import { Pool, QueryResultRow } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -12,7 +9,7 @@ if (!databaseUrl) {
 
 export const pool = new Pool({ connectionString: databaseUrl });
 
-export async function query<T = unknown>(
+export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: Array<string | number | boolean | null>
 ) {
