@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { randomBytes, scryptSync } from "crypto";
 import { query } from "./db";
+import { signSession } from "./jwt";
 
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
@@ -20,18 +21,10 @@ function verifyPassword(password: string, storedHash: string) {
   return hashed === hash;
 }
 
-async function createSession(userId: string): Promise<SessionInfo> {
-  const token = randomBytes(48).toString("hex");
+function buildSession(userId: string, role: string): SessionInfo {
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-  await query(
-    "INSERT INTO sessions (token, user_id, expires_at) VALUES ($1, $2, $3)",
-    [token, userId, expiresAt.toISOString()],
-  );
+  const token = signSession(userId, role, expiresAt);
   return { token, expiresAt };
-}
-
-export async function deleteSession(token: string) {
-  await query("DELETE FROM sessions WHERE token = $1", [token]);
 }
 
 async function auditLogin(userId: string | null, success: boolean) {
@@ -62,14 +55,14 @@ export async function login(email: string, password: string) {
     throw new Error("not_authorized");
   }
 
-  return createSession(user.id);
+  return buildSession(user.id, user.role);
 }
 
 export async function register(email: string, password: string) {
   const hashed = hashPassword(password);
-  const users = await query<{ id: string }>(
-    "INSERT INTO users (email, password_hash) VALUES ($1,$2) RETURNING id",
+  const users = await query<{ id: string; role: string }>(
+    "INSERT INTO users (email, password_hash) VALUES ($1,$2) RETURNING id, role",
     [email, hashed],
   );
-  return createSession(users[0].id);
+  return buildSession(users[0].id, users[0].role);
 }
