@@ -35,7 +35,7 @@ export async function deleteSession(token: string) {
 }
 
 async function auditLogin(userId: string | null, success: boolean) {
-  const hdrs = headers();
+  const hdrs = await headers();
   const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   const agent = hdrs.get("user-agent") ?? "unknown";
   await query(
