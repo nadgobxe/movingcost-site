@@ -1,3 +1,5 @@
+"use client";
+
 const metrics = [
   { label: "Leads today", value: "36", delta: "+12% vs. yesterday" },
   { label: "Conversion to booking", value: "41%", delta: "Target: 38%" },
@@ -80,6 +82,11 @@ const campaigns = [
 ];
 
 export default function DashboardPage() {
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <main className="mx-auto max-w-6xl px-6 py-12 lg:px-12">
@@ -93,12 +100,18 @@ export default function DashboardPage() {
               Live snapshot of leads, AnyVan promos, and automations.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold">
               Export CSV
             </button>
             <button className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-200">
               New workflow
+            </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-500 hover:border-slate-500"
+            >
+              Log out
             </button>
           </div>
         </header>
