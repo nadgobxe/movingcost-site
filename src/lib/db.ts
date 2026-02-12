@@ -1,3 +1,7 @@
+import { ensureServerOnly } from "./server-only";
+
+ensureServerOnly();
+
 import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
