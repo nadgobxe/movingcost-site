@@ -5,8 +5,6 @@ import { query } from "./db";
 const SESSION_COOKIE = "mc_session";
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
-type QueryParam = string | number | boolean | null | Date;
-
 function hashPassword(password: string, salt = randomBytes(16).toString("hex")) {
   const hashed = scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${hashed}`;
@@ -23,7 +21,7 @@ async function createSession(userId: string) {
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
   await query(
     "INSERT INTO sessions (token, user_id, expires_at) VALUES ($1, $2, $3)",
-    [token, userId, expiresAt] as QueryParam[],
+    [token, userId, expiresAt.toISOString()],
   );
   cookies().set(SESSION_COOKIE, token, {
     httpOnly: true,
